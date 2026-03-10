@@ -14,7 +14,7 @@ runs via [uv](https://github.com/astral-sh/uv), designed as a
 ## Setup
 
 ```zsh
-git clone https://github.com/yourname/garq ~/Projects/garq
+git clone https://github.com/rmrfus/garq ~/Projects/garq
 chmod +x ~/Projects/garq/garq.py
 
 # first run — prompts for email/password, stores in keychain
