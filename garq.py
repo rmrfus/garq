@@ -107,6 +107,25 @@ def _activity_label(atype: str, name: str) -> str:
     return f"{atype} ({clean})" if clean else atype
 
 
+def _extract_training_status(raw: Any) -> str | None:
+    """Extract training status feedback phrase from get_training_status() response."""
+    nested = _safe(raw, "mostRecentTrainingStatus", "latestTrainingStatusData")
+    if not isinstance(nested, dict) or not nested:
+        return None
+    device_data = next(iter(nested.values()), {})
+    phrase = _safe(device_data, "trainingStatusFeedbackPhrase")
+    if phrase:
+        return phrase.lower().replace("_", " ")
+    return None
+
+
+def _extract_vo2max(raw: Any) -> float | None:
+    """Extract VO2 max from get_training_status() response."""
+    return _safe(raw, "mostRecentVO2Max", "generic", "vo2MaxPreciseValue") or _safe(
+        raw, "mostRecentVO2Max", "generic", "vo2MaxValue"
+    )
+
+
 _ENDURANCE_CLASS: dict[int, str] = {
     1: "basic",
     2: "intermediate",
@@ -299,18 +318,19 @@ def cmd_today(api: Garmin, args: Any) -> None:
     readiness_level = _safe(readiness_data, "level") or _safe(
         readiness_data, "trainingReadinessLevel"
     )
-    t_status = _safe(training_status_data, "mostRecentTrainingStatus") or _safe(
-        training_status_data, "trainingStatus"
-    )
+    t_status = _extract_training_status(training_status_data)
+    vo2max = _extract_vo2max(training_status_data)
     endurance_score = _safe(endurance_data, "overallScore")
     endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_data, "classification") or 0, "")
-    if readiness_score is not None or t_status or endurance_score is not None:
+    if readiness_score is not None or t_status or endurance_score is not None or vo2max is not None:
         r_parts = []
         if readiness_score is not None:
             level_str = f" ({readiness_level})" if readiness_level else ""
             r_parts.append(f"Readiness: {_inum(readiness_score)}/100{level_str}")
         if t_status:
             r_parts.append(f"Status: {t_status}")
+        if vo2max is not None:
+            r_parts.append(f"VO2max: {vo2max}")
         if endurance_score is not None:
             cls_str = f" ({endurance_class})" if endurance_class else ""
             r_parts.append(f"Endurance: {_inum(endurance_score)}{cls_str}")
@@ -760,9 +780,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
     readiness_level = _safe(readiness_raw, "level") or _safe(
         readiness_raw, "trainingReadinessLevel"
     )
-    t_status = _safe(t_status_raw, "mostRecentTrainingStatus") or _safe(
-        t_status_raw, "trainingStatus"
-    )
+    t_status = _extract_training_status(t_status_raw)
+    vo2max = _extract_vo2max(t_status_raw)
     endurance_score = _safe(endurance_raw, "overallScore")
     endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_raw, "classification") or 0, "")
     bb_feedback = _safe(bb_raw, "bodyBatteryDynamicFeedbackEvent", "feedbackShortType")
@@ -826,6 +845,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
             out["training_readiness_level"] = readiness_level
         if t_status:
             out["training_status"] = t_status
+        if vo2max is not None:
+            out["vo2max"] = vo2max
         if endurance_score is not None:
             out["endurance_score"] = _s(endurance_score)
         if endurance_class:
@@ -955,13 +976,15 @@ def cmd_report(api: Garmin, args: Any) -> None:
     if misc:
         print("  " + " | ".join(misc))
 
-    if readiness_score is not None or t_status or endurance_score is not None:
+    if readiness_score is not None or t_status or endurance_score is not None or vo2max is not None:
         r_parts = []
         if readiness_score is not None:
             lvl = f" ({readiness_level})" if readiness_level else ""
             r_parts.append(f"Readiness {_inum(readiness_score)}/100{lvl}")
         if t_status:
             r_parts.append(f"Status {t_status}")
+        if vo2max is not None:
+            r_parts.append(f"VO2max {vo2max}")
         if endurance_score is not None:
             cls_str = f" ({endurance_class})" if endurance_class else ""
             r_parts.append(f"Endurance {_inum(endurance_score)}{cls_str}")
