@@ -204,6 +204,11 @@ def cmd_today(api: Garmin, args: Any) -> None:
     except Exception:
         endurance_data = {}
 
+    try:
+        fitnessage_data = api.get_fitnessage_data(today)
+    except Exception:
+        fitnessage_data = {}
+
     print(f"=== Daily Summary: {today} ===\n")
 
     # Steps / distance / calories
@@ -322,7 +327,15 @@ def cmd_today(api: Garmin, args: Any) -> None:
     vo2max = _extract_vo2max(training_status_data)
     endurance_score = _safe(endurance_data, "overallScore")
     endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_data, "classification") or 0, "")
-    if readiness_score is not None or t_status or endurance_score is not None or vo2max is not None:
+    fitness_age = _safe(fitnessage_data, "fitnessAge")
+    chron_age = _safe(fitnessage_data, "chronologicalAge")
+    if (
+        readiness_score is not None
+        or t_status
+        or endurance_score is not None
+        or vo2max is not None
+        or fitness_age is not None
+    ):
         r_parts = []
         if readiness_score is not None:
             level_str = f" ({readiness_level})" if readiness_level else ""
@@ -331,6 +344,9 @@ def cmd_today(api: Garmin, args: Any) -> None:
             r_parts.append(f"Status: {t_status}")
         if vo2max is not None:
             r_parts.append(f"VO2max: {vo2max}")
+        if fitness_age is not None:
+            age_str = f" (bio {chron_age})" if chron_age else ""
+            r_parts.append(f"Fitness age: {int(fitness_age)}{age_str}")
         if endurance_score is not None:
             cls_str = f" ({endurance_class})" if endurance_class else ""
             r_parts.append(f"Endurance: {_inum(endurance_score)}{cls_str}")
@@ -736,6 +752,10 @@ def cmd_report(api: Garmin, args: Any) -> None:
         bb_raw = bb_raw[0] if isinstance(bb_raw, list) and bb_raw else {}
     except Exception:
         bb_raw = {}
+    try:
+        fitnessage_raw = api.get_fitnessage_data(today)
+    except Exception:
+        fitnessage_raw = {}
 
     sleep_trend: list[tuple[str, Any]] = []
     if days > 1:
@@ -785,6 +805,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
     endurance_score = _safe(endurance_raw, "overallScore")
     endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_raw, "classification") or 0, "")
     bb_feedback = _safe(bb_raw, "bodyBatteryDynamicFeedbackEvent", "feedbackShortType")
+    fitness_age = _safe(fitnessage_raw, "fitnessAge")
+    chron_age = _safe(fitnessage_raw, "chronologicalAge")
 
     # --- llm JSON output ---
     if args.llm:
@@ -847,6 +869,10 @@ def cmd_report(api: Garmin, args: Any) -> None:
             out["training_status"] = t_status
         if vo2max is not None:
             out["vo2max"] = vo2max
+        if fitness_age is not None:
+            out["fitness_age"] = round(fitness_age, 1)
+        if chron_age is not None:
+            out["chronological_age"] = chron_age
         if endurance_score is not None:
             out["endurance_score"] = _s(endurance_score)
         if endurance_class:
@@ -976,7 +1002,13 @@ def cmd_report(api: Garmin, args: Any) -> None:
     if misc:
         print("  " + " | ".join(misc))
 
-    if readiness_score is not None or t_status or endurance_score is not None or vo2max is not None:
+    if (
+        readiness_score is not None
+        or t_status
+        or endurance_score is not None
+        or vo2max is not None
+        or fitness_age is not None
+    ):
         r_parts = []
         if readiness_score is not None:
             lvl = f" ({readiness_level})" if readiness_level else ""
@@ -985,6 +1017,9 @@ def cmd_report(api: Garmin, args: Any) -> None:
             r_parts.append(f"Status {t_status}")
         if vo2max is not None:
             r_parts.append(f"VO2max {vo2max}")
+        if fitness_age is not None:
+            age_str = f" (bio {chron_age})" if chron_age else ""
+            r_parts.append(f"Fitness age {int(fitness_age)}{age_str}")
         if endurance_score is not None:
             cls_str = f" ({endurance_class})" if endurance_class else ""
             r_parts.append(f"Endurance {_inum(endurance_score)}{cls_str}")
@@ -1262,6 +1297,7 @@ def cmd_stats(api: Garmin, args: Any) -> None:
             lambda: api.get_weigh_ins((date.today() - timedelta(days=30)).isoformat(), today),
         ),
         ("endurance_score", lambda: api.get_endurance_score(today)),
+        ("fitnessage", lambda: api.get_fitnessage_data(today)),
         ("body_battery_events", lambda: api.get_body_battery_events(today)),
         ("weekly_stress", lambda: api.get_weekly_stress(today, 8)),
     ]
