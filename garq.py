@@ -107,6 +107,17 @@ def _activity_label(atype: str, name: str) -> str:
     return f"{atype} ({clean})" if clean else atype
 
 
+_ENDURANCE_CLASS: dict[int, str] = {
+    1: "basic",
+    2: "intermediate",
+    3: "trained",
+    4: "well-trained",
+    5: "expert",
+    6: "superior",
+    7: "elite",
+}
+
+
 def _safe(d: Any, *keys: str, default: Any = None) -> Any:
     val: Any = d
     for k in keys:
@@ -167,6 +178,11 @@ def cmd_today(api: Garmin, args: Any) -> None:
         training_status_data = api.get_training_status(today)
     except Exception:
         training_status_data = {}
+
+    try:
+        endurance_data = api.get_endurance_score(today)
+    except Exception:
+        endurance_data = {}
 
     print(f"=== Daily Summary: {today} ===\n")
 
@@ -282,13 +298,18 @@ def cmd_today(api: Garmin, args: Any) -> None:
     t_status = _safe(training_status_data, "mostRecentTrainingStatus") or _safe(
         training_status_data, "trainingStatus"
     )
-    if readiness_score is not None or t_status:
+    endurance_score = _safe(endurance_data, "overallScore")
+    endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_data, "classification") or 0, "")
+    if readiness_score is not None or t_status or endurance_score is not None:
         r_parts = []
         if readiness_score is not None:
             level_str = f" ({readiness_level})" if readiness_level else ""
             r_parts.append(f"Readiness: {_inum(readiness_score)}/100{level_str}")
         if t_status:
             r_parts.append(f"Status: {t_status}")
+        if endurance_score is not None:
+            cls_str = f" ({endurance_class})" if endurance_class else ""
+            r_parts.append(f"Endurance: {_inum(endurance_score)}{cls_str}")
         print(f"Training:     {' | '.join(r_parts)}")
 
     # Sleep summary
@@ -682,6 +703,10 @@ def cmd_report(api: Garmin, args: Any) -> None:
         t_status_raw = api.get_training_status(today)
     except Exception:
         t_status_raw = {}
+    try:
+        endurance_raw = api.get_endurance_score(today)
+    except Exception:
+        endurance_raw = {}
 
     sleep_trend: list[tuple[str, Any]] = []
     if days > 1:
@@ -729,6 +754,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
     t_status = _safe(t_status_raw, "mostRecentTrainingStatus") or _safe(
         t_status_raw, "trainingStatus"
     )
+    endurance_score = _safe(endurance_raw, "overallScore")
+    endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_raw, "classification") or 0, "")
 
     # --- llm JSON output ---
     if args.llm:
@@ -787,6 +814,10 @@ def cmd_report(api: Garmin, args: Any) -> None:
             out["training_readiness_level"] = readiness_level
         if t_status:
             out["training_status"] = t_status
+        if endurance_score is not None:
+            out["endurance_score"] = _s(endurance_score)
+        if endurance_class:
+            out["endurance_class"] = endurance_class
         out["sleep_date"] = yesterday
         if sl["total_s"] is not None:
             out["sleep_total_min"] = int(sl["total_s"]) // 60
@@ -910,13 +941,16 @@ def cmd_report(api: Garmin, args: Any) -> None:
     if misc:
         print("  " + " | ".join(misc))
 
-    if readiness_score is not None or t_status:
+    if readiness_score is not None or t_status or endurance_score is not None:
         r_parts = []
         if readiness_score is not None:
             lvl = f" ({readiness_level})" if readiness_level else ""
             r_parts.append(f"Readiness {_inum(readiness_score)}/100{lvl}")
         if t_status:
             r_parts.append(f"Status {t_status}")
+        if endurance_score is not None:
+            cls_str = f" ({endurance_class})" if endurance_class else ""
+            r_parts.append(f"Endurance {_inum(endurance_score)}{cls_str}")
         print(f"  Training: {' | '.join(r_parts)}")
 
     # Sleep
@@ -1056,7 +1090,11 @@ def cmd_activity(api: Garmin, args: Any) -> None:
     except Exception:
         laps = []
 
-    valid_laps = [lap for lap in laps if (_safe(lap, "distance") or 0) >= 10 and (_safe(lap, "duration") or 0) >= 30]
+    valid_laps = [
+        lap
+        for lap in laps
+        if (_safe(lap, "distance") or 0) >= 10 and (_safe(lap, "duration") or 0) >= 30
+    ]
     if valid_laps:
         print(f"\nLaps ({len(valid_laps)}):")
         for i, lap in enumerate(valid_laps, 1):
@@ -1186,6 +1224,7 @@ def cmd_stats(api: Garmin, args: Any) -> None:
             "weigh_ins",
             lambda: api.get_weigh_ins((date.today() - timedelta(days=30)).isoformat(), today),
         ),
+        ("endurance_score", lambda: api.get_endurance_score(today)),
     ]
 
     results: dict[str, Any] = {}
