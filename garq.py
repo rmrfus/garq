@@ -145,9 +145,10 @@ def cmd_today(api: Garmin, args: Any) -> None:
         hr_data = {}
 
     try:
-        api.get_body_battery(today, today)
+        bb_data = api.get_body_battery(today, today)
+        bb_data = bb_data[0] if isinstance(bb_data, list) and bb_data else {}
     except Exception:
-        pass
+        bb_data = {}
 
     try:
         stress_data = api.get_stress_data(today)
@@ -247,6 +248,7 @@ def cmd_today(api: Garmin, args: Any) -> None:
     bb_charged = _safe(summary, "bodyBatteryChargedValue")
     bb_drained = _safe(summary, "bodyBatteryDrainedValue")
 
+    bb_feedback = _safe(bb_data, "bodyBatteryDynamicFeedbackEvent", "feedbackShortType")
     if any(v is not None for v in (bb_current, bb_high, bb_low)):
         parts = []
         if bb_current is not None:
@@ -259,6 +261,8 @@ def cmd_today(api: Garmin, args: Any) -> None:
             parts.append(f"+{bb_charged} charged")
         if bb_drained:
             parts.append(f"-{bb_drained} drained")
+        if bb_feedback and bb_feedback != "NONE":
+            parts.append(bb_feedback.lower().replace("_", " "))
         print(f"Body Battery: {' | '.join(parts)}")
 
     # Stress
@@ -707,6 +711,11 @@ def cmd_report(api: Garmin, args: Any) -> None:
         endurance_raw = api.get_endurance_score(today)
     except Exception:
         endurance_raw = {}
+    try:
+        bb_raw = api.get_body_battery(today, today)
+        bb_raw = bb_raw[0] if isinstance(bb_raw, list) and bb_raw else {}
+    except Exception:
+        bb_raw = {}
 
     sleep_trend: list[tuple[str, Any]] = []
     if days > 1:
@@ -756,6 +765,7 @@ def cmd_report(api: Garmin, args: Any) -> None:
     )
     endurance_score = _safe(endurance_raw, "overallScore")
     endurance_class = _ENDURANCE_CLASS.get(_safe(endurance_raw, "classification") or 0, "")
+    bb_feedback = _safe(bb_raw, "bodyBatteryDynamicFeedbackEvent", "feedbackShortType")
 
     # --- llm JSON output ---
     if args.llm:
@@ -801,6 +811,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
             out["body_battery_charged"] = _s(bb_charged)
         if bb_drained:
             out["body_battery_drained"] = _s(bb_drained)
+        if bb_feedback and bb_feedback != "NONE":
+            out["body_battery_feedback"] = bb_feedback.lower().replace("_", " ")
         if stress_avg is not None:
             out["stress_avg"] = _s(stress_avg)
             out["stress_level"] = stress_level
@@ -918,6 +930,8 @@ def cmd_report(api: Garmin, args: Any) -> None:
         if bb_drained:
             delta.append(f"-{_inum(bb_drained)}")
         bb_parts.append(f"({'/ '.join(delta)})")
+    if bb_feedback and bb_feedback != "NONE":
+        bb_parts.append(bb_feedback.lower().replace("_", " "))
     if bb_parts:
         print(f"  Body Battery (0-100): {' | '.join(bb_parts)}")
 
@@ -1225,6 +1239,8 @@ def cmd_stats(api: Garmin, args: Any) -> None:
             lambda: api.get_weigh_ins((date.today() - timedelta(days=30)).isoformat(), today),
         ),
         ("endurance_score", lambda: api.get_endurance_score(today)),
+        ("body_battery_events", lambda: api.get_body_battery_events(today)),
+        ("weekly_stress", lambda: api.get_weekly_stress(today, 8)),
     ]
 
     results: dict[str, Any] = {}
