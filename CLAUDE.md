@@ -9,7 +9,10 @@ garq.py               # the script — UV shebang, inline deps, all logic here
 pyproject.toml        # dev tooling only (ruff, ty, pytest); runtime deps mirrored for type checking
 test_garq.py          # unit tests — mocked API, no real credentials needed
 test_claude_skill.py  # end-to-end skill tester — runs questions through `claude -p`
-~/.claude/skills/garq/SKILL.md  # skill definition pointing to this script
+SKILL.md              # skill definition — deploy to ~/.claude/skills/garq/
+
+~/.claude/skills/garq/garq.py   # deployed script (copy from repo)
+~/.claude/skills/garq/SKILL.md  # deployed skill definition (copy from repo)
 ```
 
 ## Running
@@ -68,18 +71,20 @@ When adding a new subcommand, add unit tests to `test_garq.py`:
 1. Add `cmd_<name>(api, args)` function
 2. Add parser in `main()` under `sub.add_parser(...)`
 3. Add to `dispatch` dict
-4. **Always update `~/.claude/skills/garq/SKILL.md`**: argument-hint, Commands block, Workflow section
+4. **Always update `SKILL.md` in the repo** and re-deploy: argument-hint, Commands block, Workflow section
 
 ## IMPORTANT: keep the skill in sync
 
 Any change to garq.py that affects user-facing functionality **must** be reflected in
-`~/.claude/skills/garq/SKILL.md` before the task is considered done:
+`SKILL.md` and both files re-deployed to `~/.claude/skills/garq/` before the task is considered done:
 
 - New subcommand → add to argument-hint, Commands block, Workflow
 - New flag → update argument-hint and relevant command example
 - Changed default (--days, --limit, etc.) → update the example in Commands
 - Removed/renamed command → remove from all three places
 - Changed trigger scenarios → update the `description` field in the frontmatter
+
+After any change: `cp garq.py SKILL.md ~/.claude/skills/garq/`
 
 ## garminconnect API notes
 

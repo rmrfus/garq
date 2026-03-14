@@ -5,7 +5,7 @@ argument-hint: "[report|today|sleep|activities|activity|hrv|weight|spo2|steps|st
 allowed-tools: Bash
 ---
 
-Use `${HOME}/Projects/garq/garq.py` to fetch Garmin Connect data.
+Use `${CLAUDE_SKILL_DIR}/garq.py` to fetch Garmin Connect data.
 
 The script uses a `uv` shebang — run it directly, not with `python`. Tokens are cached in `~/.garth`; credentials in system keychain. First run is interactive.
 
@@ -13,40 +13,40 @@ The script uses a `uv` shebang — run it directly, not with `python`. Tokens ar
 
 ```bash
 # ALL KEY METRICS IN ONE CALL (preferred for LLM use)
-${HOME}/Projects/garq/garq.py report              # compact text
-${HOME}/Projects/garq/garq.py report --llm        # flat JSON, no nulls, no arrays
-${HOME}/Projects/garq/garq.py report --days 7     # include 7-day sleep trend
-${HOME}/Projects/garq/garq.py report --days 7 --llm
+${CLAUDE_SKILL_DIR}/garq.py report              # compact text
+${CLAUDE_SKILL_DIR}/garq.py report --llm        # flat JSON, no nulls, no arrays
+${CLAUDE_SKILL_DIR}/garq.py report --days 7     # include 7-day sleep trend
+${CLAUDE_SKILL_DIR}/garq.py report --days 7 --llm
 
 # Full daily summary: steps, HR, HRV, body battery, stress, sleep
-${HOME}/Projects/garq/garq.py today
+${CLAUDE_SKILL_DIR}/garq.py today
 
 # Sleep for last N days (default 7)
-${HOME}/Projects/garq/garq.py sleep --days 14
+${CLAUDE_SKILL_DIR}/garq.py sleep --days 14
 
 # Recent activities (default 10); --days filters by recency
-${HOME}/Projects/garq/garq.py activities --limit 20
-${HOME}/Projects/garq/garq.py activities --days 7
+${CLAUDE_SKILL_DIR}/garq.py activities --limit 20
+${CLAUDE_SKILL_DIR}/garq.py activities --days 7
 
 # HRV trend for last N days (default 7)
-${HOME}/Projects/garq/garq.py hrv --days 14
+${CLAUDE_SKILL_DIR}/garq.py hrv --days 14
 
 # Weight / body composition history (default 30 days)
-${HOME}/Projects/garq/garq.py weight --days 90
+${CLAUDE_SKILL_DIR}/garq.py weight --days 90
 
 # SpO2 and respiration trend (default 7 days)
-${HOME}/Projects/garq/garq.py spo2 --days 14
+${CLAUDE_SKILL_DIR}/garq.py spo2 --days 14
 
 # Single activity drill-down: HR zones, laps, pace (ID from `activities --raw`)
-${HOME}/Projects/garq/garq.py activity 12345678
+${CLAUDE_SKILL_DIR}/garq.py activity 12345678
 
 # Step totals by day / week / month (default 30 days, daily)
-${HOME}/Projects/garq/garq.py steps
-${HOME}/Projects/garq/garq.py steps --days 90 --period week
-${HOME}/Projects/garq/garq.py steps --days 365 --period month
+${CLAUDE_SKILL_DIR}/garq.py steps
+${CLAUDE_SKILL_DIR}/garq.py steps --days 90 --period week
+${CLAUDE_SKILL_DIR}/garq.py steps --days 365 --period month
 
 # Dump all raw JSON stats for today
-${HOME}/Projects/garq/garq.py stats
+${CLAUDE_SKILL_DIR}/garq.py stats
 ```
 
 `--raw` can be placed after the subcommand: `garq.py today --raw`, `garq.py hrv --days 14 --raw`.

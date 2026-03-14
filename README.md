@@ -15,10 +15,15 @@ runs via [uv](https://github.com/astral-sh/uv), designed as a
 
 ```zsh
 git clone https://github.com/rmrfus/garq ~/Projects/garq
-chmod +x ~/Projects/garq/garq.py
+
+# deploy script and skill definition to Claude skills directory
+mkdir -p ~/.claude/skills/garq
+cp ~/Projects/garq/garq.py ~/.claude/skills/garq/garq.py
+cp ~/Projects/garq/SKILL.md ~/.claude/skills/garq/SKILL.md
+chmod +x ~/.claude/skills/garq/garq.py
 
 # first run — prompts for email/password, stores in keychain
-~/Projects/garq/garq.py today
+~/.claude/skills/garq/garq.py today
 ```
 
 Credentials are stored in the system keychain under service `garq`.
@@ -108,14 +113,11 @@ Flat JSON with no nulls, no arrays, no nested dicts — designed for LLM consump
 
 ## Claude Code skill
 
-Copy `SKILL.md` to `~/.claude/skills/garq/SKILL.md`. Claude will then
-automatically invoke `garq.py` when asked about health data, steps, sleep,
-HRV, activities, etc.
+`SKILL.md` and `garq.py` both live in `~/.claude/skills/garq/`. Claude picks
+them up automatically and invokes `garq.py` when asked about health data,
+steps, sleep, HRV, activities, etc.
 
-```zsh
-mkdir -p ~/.claude/skills/garq
-cp SKILL.md ~/.claude/skills/garq/SKILL.md
-```
+See **Setup** above — the deploy step copies both files.
 
 ## Dev
 
